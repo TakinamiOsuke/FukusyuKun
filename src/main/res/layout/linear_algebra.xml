@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:context=".LinearAlgebraActivity">
 
     <!-- 上部の戻るボタンとTextView -->
     <RelativeLayout
@@ -20,8 +21,9 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:backgroundTint="#4169E1"
-            android:textStyle="bold"
-            android:text="戻る" />
+            android:text="戻る"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_title"
@@ -41,14 +43,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#EEEEEE"
-        android:queryHint="キーワードを検索" />
+        android:queryHint="キーワードを検索"
+        android:iconifiedByDefault="false"
+        android:layout_margin="4dp"
+        />
 
-    <!-- TableRow (画像とテキスト) -->
+    <!-- TableRow (ImageButton + Spinner + EditText) -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp">
 
+        <!-- ImageButton -->
         <ImageButton
             android:id="@+id/image_button"
             android:layout_width="0dp"
@@ -57,15 +63,32 @@
             android:backgroundTint="#EEEEEE"
             tools:srcCompat="@android:drawable/ic_menu_gallery" />
 
-        <EditText
-            android:id="@+id/edit_text"
+        <!-- Spinner and EditText -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
-            android:hint="テキスト入力"
-            android:lines="5"
-            android:gravity="top"
-            android:background="#FFFFFF" />
+            android:orientation="vertical">
+
+            <Spinner
+                android:id="@+id/spinner"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:entries="@array/linear_algebra_menu"
+                android:background="#FFFFFF"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="2"
+                android:background="#FFFFFF"
+                android:gravity="top"
+                android:hint="テキスト入力"
+                android:lines="5" />
+        </LinearLayout>
 
     </TableRow>
 
@@ -82,27 +105,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:backgroundTint="#4169E1"
-            android:textStyle="bold"
-            android:text="追加" />
-
-        <Button
-            android:id="@+id/btn_update"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#4169E1"
-            android:textStyle="bold"
-            android:text="更新" />
-
-        <Button
-            android:id="@+id/btn_delete"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#4169E1"
-            android:textStyle="bold"
-            android:text="削除" />
-
+            android:text="追加"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
     </TableRow>
 
     <!-- スクロール可能なレイアウト -->

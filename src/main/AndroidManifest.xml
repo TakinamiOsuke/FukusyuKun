@@ -41,6 +41,10 @@
         <activity android:name = ".ExSampleInput"/>
         <activity android:name=".LinearAlgebraActivity" />
         <activity android:name=".CalculusActivity" />
+        <activity android:name=".LAExpansionActivity" />
+        <activity android:name=".CExpansionActivity" />
+        <activity android:name=".LAEditActivity" />
+        <activity android:name=".CEditActivity" />
         <service android:name = ".ExSampleService"/>
         <activity android:name=".ExSample3_14" />
 

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/white">
+
+    <!-- 上部バー: 左端に✖、中央に「編集中」、右端に「保存」ボタン -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#B0C4DE"
+        android:padding="8dp">
+
+        <!-- ✖ボタン -->
+        <Button
+            android:id="@+id/btn_close_edit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:text="✖"
+            android:backgroundTint="#4169E1"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+
+        <!-- 中央タイトル (例: "線形代数 - 編集中") -->
+        <TextView
+            android:id="@+id/tv_edit_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:text="編集中"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- 右端の保存ボタン -->
+        <Button
+            android:id="@+id/btn_save_edit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:backgroundTint="#4169E1"
+            android:text="保存"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+
+    </RelativeLayout>
+
+    <!-- 下部の編集領域: Spinner + EditText -->
+    <!-- 大きな編集を想定するなら ScrollView で包んでもOK -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <Spinner
+            android:id="@+id/spinner_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:entries="@array/linear_algebra_menu" />
+
+        <EditText
+            android:id="@+id/et_edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="編集内容"
+            android:gravity="top"
+            android:minLines="5" />
+    </LinearLayout>
+
+</LinearLayout>
