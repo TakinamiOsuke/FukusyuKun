@@ -11,7 +11,7 @@ public class LinearAlgebraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.liner_algebra); // liner_algebra.xml を表示
+        setContentView(R.layout.linear_algebra); // liner_algebra.xml を表示
 
         // 戻るボタンを取得
         Button btnBack = findViewById(R.id.btn_back);
