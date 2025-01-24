@@ -24,7 +24,7 @@
             android:textStyle="bold"
             android:textColor="@android:color/white" />
 
-        <!-- 中央タイトル (例: "線形代数") -->
+        <!-- 中央タイトル (例: "微分積分") -->
         <TextView
             android:id="@+id/tv_expansion_title"
             android:layout_width="wrap_content"

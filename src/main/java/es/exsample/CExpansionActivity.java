@@ -15,16 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 拡大表示画面。
- * - 大きい maxSize (例: 2000) で画像を復元 → 高解像度
- * - 編集→LAEditActivity、削除→AlertDialog
+ * 拡大表示画面 (微分積分版)。
+ * - レイアウト：c_expansion.xml
+ * - 画像を高解像度で表示
+ * - 編集: CEditActivity
+ * - 削除: AlertDialog確認
  */
-public class LAExpansionActivity extends AppCompatActivity {
+public class CExpansionActivity extends AppCompatActivity {
 
     private static final String ITEM_DELIMITER = "@@@";
     private static final String FIELD_DELIMITER = "###";
-    private static final String PREF_NAME = "LinearAlgebraPrefs";
-    private static final String KEY_ITEM_LIST = "LA_ITEM_LIST";
+    private static final String PREF_NAME = "CalculusPrefs";
+    private static final String KEY_ITEM_LIST = "CAL_ITEM_LIST";
 
     private int itemIndex = -1;
     private String activityTitle = "拡大表示";
@@ -37,13 +39,13 @@ public class LAExpansionActivity extends AppCompatActivity {
     private Button btnEdit;
     private Button btnDelete;
 
-    private List<LinearAlgebraActivity.LAItem> itemList = new ArrayList<>();
-    private LinearAlgebraActivity.LAItem currentItem;
+    private List<CalculusActivity.CalItem> itemList = new ArrayList<>();
+    private CalculusActivity.CalItem currentItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.la_expansion);
+        setContentView(R.layout.c_expansion);
 
         tvExpansionTitle = findViewById(R.id.tv_expansion_title);
         imgExpanded = findViewById(R.id.img_expanded);
@@ -68,7 +70,7 @@ public class LAExpansionActivity extends AppCompatActivity {
             currentItem = itemList.get(itemIndex);
         }
 
-        // 画像を大きいサイズで復元
+        // 画像を大きいサイズで復元 (例: 2000px)
         if (currentItem != null) {
             Bitmap bigBitmap = decodeBase64ToBitmap(currentItem.base64Image, 2000);
             if (bigBitmap != null) {
@@ -84,7 +86,7 @@ public class LAExpansionActivity extends AppCompatActivity {
         btnEdit.setOnClickListener(v -> {
             if (currentItem == null) return;
             // 編集画面へ
-            Intent intent = new Intent(this, LAEditActivity.class);
+            Intent intent = new Intent(this, CEditActivity.class);
             intent.putExtra("INDEX", itemIndex);
             intent.putExtra("ACTIVITY_TITLE", activityTitle);
             startActivity(intent);
@@ -120,10 +122,10 @@ public class LAExpansionActivity extends AppCompatActivity {
     // ========================
     // SharedPreferences
     // ========================
-    private List<LinearAlgebraActivity.LAItem> loadItemListFromPrefs() {
+    private List<CalculusActivity.CalItem> loadItemListFromPrefs() {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String serialized = prefs.getString(KEY_ITEM_LIST, "");
-        List<LinearAlgebraActivity.LAItem> result = new ArrayList<>();
+        List<CalculusActivity.CalItem> result = new ArrayList<>();
         if (serialized.isEmpty()) {
             return result;
         }
@@ -136,14 +138,14 @@ public class LAExpansionActivity extends AppCompatActivity {
             if (fields.length < 3) {
                 continue;
             }
-            result.add(new LinearAlgebraActivity.LAItem(fields[0], fields[1], fields[2]));
+            result.add(new CalculusActivity.CalItem(fields[0], fields[1], fields[2]));
         }
         return result;
     }
 
-    private void saveItemListToPrefs(List<LinearAlgebraActivity.LAItem> list) {
+    private void saveItemListToPrefs(List<CalculusActivity.CalItem> list) {
         StringBuilder sb = new StringBuilder();
-        for (LinearAlgebraActivity.LAItem item : list) {
+        for (CalculusActivity.CalItem item : list) {
             sb.append(item.base64Image)
                     .append(FIELD_DELIMITER)
                     .append(item.spinnerText)
@@ -187,3 +189,4 @@ public class LAExpansionActivity extends AppCompatActivity {
         }
     }
 }
+
