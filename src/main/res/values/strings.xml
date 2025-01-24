@@ -28,5 +28,26 @@
     <string name="tv_sight">観光地を入力してください。</string>
     <string name="bt_search">検索</string>
     <string name="tv_result">検索結果：</string>
+    <!-- 線形代数のメニュー -->
+    <string-array name="linear_algebra_menu">
+        <item>ベクトル</item>
+        <item>行列</item>
+        <item>行列式</item>
+        <item>連立１次方程式</item>
+        <item>線形空間</item>
+        <item>線形写像</item>
+        <item>行列の対角比</item>
+        <item>ジョルダン標準形</item>
+    </string-array>
+
+    <!-- 微分積分のメニュー -->
+    <string-array name="calculus_menu">
+        <item>数列と関数の極限</item>
+        <item>微分法とその応用</item>
+        <item>積分法とその応用</item>
+        <item>2変数関数の微分</item>
+        <item>2変数関数の重積分</item>
+    </string-array>
+
 
 </resources>
