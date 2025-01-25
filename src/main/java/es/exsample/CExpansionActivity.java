@@ -16,7 +16,8 @@ import java.util.List;
 
 /**
  * 拡大表示画面 (微分積分)。
- * レイアウト: c_expansion.xml
+ * - 画質向上のため、Base64→Bitmapで maxSize を大きく (例: 4000)
+ * - 他の機能 (編集/削除) は従来どおり
  */
 public class CExpansionActivity extends AppCompatActivity {
 
@@ -29,11 +30,16 @@ public class CExpansionActivity extends AppCompatActivity {
     private String activityTitle = "拡大表示";
 
     private ImageView imgExpanded;
-    private TextView tvSpinnerTitle, tvComment, tvExpansionTitle;
+    private TextView tvSpinnerTitle;
+    private TextView tvComment;
+    private TextView tvExpansionTitle;
     private Button btnClose, btnEdit, btnDelete;
 
     private List<CalculusActivity.CalItem> itemList = new ArrayList<>();
     private CalculusActivity.CalItem currentItem;
+
+    // 画質向上
+    private static final int MAX_EXPANSION_SIZE = 4000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,13 +62,15 @@ public class CExpansionActivity extends AppCompatActivity {
         }
         tvExpansionTitle.setText(activityTitle);
 
+        // itemList読み込み
         itemList = loadItemListFromPrefs();
         if (itemIndex >= 0 && itemIndex < itemList.size()) {
             currentItem = itemList.get(itemIndex);
         }
 
+        // 高解像度でデコード
         if (currentItem != null) {
-            Bitmap bigBmp = decodeBase64ToBitmap(currentItem.base64Image, 2000);
+            Bitmap bigBmp = decodeBase64ToBitmap(currentItem.base64Image, MAX_EXPANSION_SIZE);
             if (bigBmp != null) {
                 imgExpanded.setImageBitmap(bigBmp);
             }
@@ -108,26 +116,34 @@ public class CExpansionActivity extends AppCompatActivity {
     // ========================
     private List<CalculusActivity.CalItem> loadItemListFromPrefs() {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        String s = prefs.getString(KEY_ITEM_LIST, "");
-        List<CalculusActivity.CalItem> res = new ArrayList<>();
-        if (s.isEmpty()) return res;
-
-        String[] chunks = s.split(ITEM_DELIMITER);
-        for (String c : chunks) {
-            if (c.trim().isEmpty()) continue;
-            String[] f = c.split(FIELD_DELIMITER);
-            if (f.length < 3) continue;
-            res.add(new CalculusActivity.CalItem(f[0], f[1], f[2]));
+        String serialized = prefs.getString(KEY_ITEM_LIST, "");
+        List<CalculusActivity.CalItem> result = new ArrayList<>();
+        if (serialized.isEmpty()) {
+            return result;
         }
-        return res;
+        String[] chunks = serialized.split(ITEM_DELIMITER);
+        for (String c : chunks) {
+            if (c.trim().isEmpty()) {
+                continue;
+            }
+            String[] fields = c.split(FIELD_DELIMITER);
+            if (fields.length < 3) {
+                continue;
+            }
+            result.add(new CalculusActivity.CalItem(fields[0], fields[1], fields[2]));
+        }
+        return result;
     }
 
     private void saveItemListToPrefs(List<CalculusActivity.CalItem> list) {
         StringBuilder sb = new StringBuilder();
         for (CalculusActivity.CalItem it : list) {
-            sb.append(it.base64Image).append(FIELD_DELIMITER)
-                    .append(it.spinnerText).append(FIELD_DELIMITER)
-                    .append(it.editText).append(ITEM_DELIMITER);
+            sb.append(it.base64Image)
+                    .append(FIELD_DELIMITER)
+                    .append(it.spinnerText)
+                    .append(FIELD_DELIMITER)
+                    .append(it.editText)
+                    .append(ITEM_DELIMITER);
         }
         getSharedPreferences(PREF_NAME, MODE_PRIVATE)
                 .edit()
@@ -136,27 +152,29 @@ public class CExpansionActivity extends AppCompatActivity {
     }
 
     // ========================
-    // 画像デコード
+    // 画像デコード (高解像度)
     // ========================
     private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
         try {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (raw == null) return null;
+            Bitmap rawBmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (rawBmp == null) return null;
 
-            int w = raw.getWidth(), h = raw.getHeight();
+            int w = rawBmp.getWidth();
+            int h = rawBmp.getHeight();
             if (w > maxSize || h > maxSize) {
-                float r = (float) w / (float) h;
-                if (r > 1f) {
+                float ratio = (float) w / (float) h;
+                if (ratio > 1f) {
                     w = maxSize;
-                    h = (int)(maxSize / r);
+                    h = (int)(maxSize / ratio);
                 } else {
                     h = maxSize;
-                    w = (int)(maxSize * r);
+                    w = (int)(maxSize * ratio);
                 }
-                return Bitmap.createScaledBitmap(raw, w, h, true);
+                return Bitmap.createScaledBitmap(rawBmp, w, h, true);
+            } else {
+                return rawBmp;
             }
-            return raw;
         } catch (Exception e) {
             e.printStackTrace();
             return null;

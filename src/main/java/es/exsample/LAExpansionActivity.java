@@ -16,8 +16,8 @@ import java.util.List;
 
 /**
  * 拡大表示画面 (線形代数)。
- * レイアウト: la_expansion.xml
- * 画像を高解像度で表示。編集・削除ボタンあり。
+ * - 画質向上のため、Base64→Bitmapで maxSize をより大きく設定 (例: 4000)
+ * - 他の機能 (編集/削除 ボタンなど) は従来どおり
  */
 public class LAExpansionActivity extends AppCompatActivity {
 
@@ -37,6 +37,9 @@ public class LAExpansionActivity extends AppCompatActivity {
 
     private List<LinearAlgebraActivity.LAItem> itemList = new ArrayList<>();
     private LinearAlgebraActivity.LAItem currentItem;
+
+    // 画質向上 (大きめ)
+    private static final int MAX_EXPANSION_SIZE = 4000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,9 +69,9 @@ public class LAExpansionActivity extends AppCompatActivity {
             currentItem = itemList.get(itemIndex);
         }
 
-        // 画像を大きめに表示
+        // 画像を大きいサイズで復元 (例: 4000)
         if (currentItem != null) {
-            Bitmap bigBitmap = decodeBase64ToBitmap(currentItem.base64Image, 2000);
+            Bitmap bigBitmap = decodeBase64ToBitmap(currentItem.base64Image, MAX_EXPANSION_SIZE);
             if (bigBitmap != null) {
                 imgExpanded.setImageBitmap(bigBitmap);
             }
@@ -116,24 +119,32 @@ public class LAExpansionActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String serialized = prefs.getString(KEY_ITEM_LIST, "");
         List<LinearAlgebraActivity.LAItem> result = new ArrayList<>();
-        if (serialized.isEmpty()) return result;
-
-        String[] chunks = serialized.split(ITEM_DELIMITER);
-        for (String c : chunks) {
-            if (c.trim().isEmpty()) continue;
-            String[] f = c.split(FIELD_DELIMITER);
-            if (f.length < 3) continue;
-            result.add(new LinearAlgebraActivity.LAItem(f[0], f[1], f[2]));
+        if (serialized.isEmpty()) {
+            return result;
+        }
+        String[] itemChunks = serialized.split(ITEM_DELIMITER);
+        for (String chunk : itemChunks) {
+            if (chunk.trim().isEmpty()) {
+                continue;
+            }
+            String[] fields = chunk.split(FIELD_DELIMITER);
+            if (fields.length < 3) {
+                continue;
+            }
+            result.add(new LinearAlgebraActivity.LAItem(fields[0], fields[1], fields[2]));
         }
         return result;
     }
 
     private void saveItemListToPrefs(List<LinearAlgebraActivity.LAItem> list) {
         StringBuilder sb = new StringBuilder();
-        for (LinearAlgebraActivity.LAItem it : list) {
-            sb.append(it.base64Image).append(FIELD_DELIMITER)
-                    .append(it.spinnerText).append(FIELD_DELIMITER)
-                    .append(it.editText).append(ITEM_DELIMITER);
+        for (LinearAlgebraActivity.LAItem item : list) {
+            sb.append(item.base64Image)
+                    .append(FIELD_DELIMITER)
+                    .append(item.spinnerText)
+                    .append(FIELD_DELIMITER)
+                    .append(item.editText)
+                    .append(ITEM_DELIMITER);
         }
         getSharedPreferences(PREF_NAME, MODE_PRIVATE)
                 .edit()
@@ -142,28 +153,29 @@ public class LAExpansionActivity extends AppCompatActivity {
     }
 
     // ========================
-    // 画像デコード
+    // 画像デコード (高解像度)
     // ========================
     private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
         try {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (raw == null) return null;
+            Bitmap rawBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (rawBitmap == null) return null;
 
-            int w = raw.getWidth();
-            int h = raw.getHeight();
-            if (w > maxSize || h > maxSize) {
-                float ratio = (float) w / (float) h;
+            int width = rawBitmap.getWidth();
+            int height = rawBitmap.getHeight();
+            if (width > maxSize || height > maxSize) {
+                float ratio = (float) width / (float) height;
                 if (ratio > 1f) {
-                    w = maxSize;
-                    h = (int)(maxSize / ratio);
+                    width = maxSize;
+                    height = (int)(maxSize / ratio);
                 } else {
-                    h = maxSize;
-                    w = (int)(maxSize * ratio);
+                    height = maxSize;
+                    width = (int)(maxSize * ratio);
                 }
-                return Bitmap.createScaledBitmap(raw, w, h, true);
+                return Bitmap.createScaledBitmap(rawBitmap, width, height, true);
+            } else {
+                return rawBitmap;
             }
-            return raw;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
