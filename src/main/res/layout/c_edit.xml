@@ -3,10 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@android:color/white">
+    android:background="@android:color/white"
+    android:orientation="vertical">
 
-    <!-- 上部バー: 左端に✖、中央に「編集中」、右端に「保存」ボタン -->
+    <!-- 上部バー -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -43,9 +43,9 @@
             android:text="保存"
             android:textStyle="bold"
             android:textColor="@android:color/white" />
+
     </RelativeLayout>
 
-    <!-- コンパクトなレイアウト: 画像変更 + タイトル選択 + テキスト -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -56,6 +56,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- FrameLayout で ImageButton + テキスト -->
             <FrameLayout
                 android:layout_width="200dp"
                 android:layout_height="200dp"
@@ -63,11 +64,11 @@
                 android:layout_marginBottom="16dp">
 
                 <ImageButton
-                    android:id="@+id/edit_image_button"
+                    android:id="@+id/ib_edit_image"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:backgroundTint="#EEEEEE" />
+                    android:backgroundTint="#EEEEEE"
+                    android:scaleType="centerCrop" />
 
                 <TextView
                     android:id="@+id/tv_edit_image_hint"
@@ -82,7 +83,8 @@
             <Spinner
                 android:id="@+id/spinner_edit"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" />
 
             <EditText
                 android:id="@+id/et_edit_text"
@@ -92,7 +94,6 @@
                 android:hint="編集内容"
                 android:gravity="top"
                 android:minLines="5" />
-
         </LinearLayout>
     </ScrollView>
 

@@ -19,14 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 線形代数: 編集画面 (Spinner + EditText + 画像変更対応)
- * レイアウト: la_edit.xml
+ * 線形代数: 編集画面
+ * - ImageButton +「画像選択」テキストを重ねる
+ * - 選択後にテキストを隠し、高解像度(1200)で取り込み
  */
 public class LAEditActivity extends AppCompatActivity {
 
-    private static final int PICK_IMAGE_EDIT = 2;
+    private static final int REQUEST_EDIT_GALLERY = 101;
 
-    // SharedPreferences
     private static final String ITEM_DELIMITER = "@@@";
     private static final String FIELD_DELIMITER = "###";
     private static final String PREF_NAME = "LinearAlgebraPrefs";
@@ -36,21 +36,18 @@ public class LAEditActivity extends AppCompatActivity {
     private String activityTitle = "編集中";
 
     private Button btnClose, btnSave;
+    private ImageButton ibEditImage;       // ImageButton
+    private TextView tvEditImageHint;      // 「画像選択」テキスト
     private TextView tvTitle;
     private Spinner spinnerEdit;
     private EditText editTextEdit;
 
-    // 画像変更用
-    private FrameLayout frameImageButton;
-    private ImageButton imageButton;
-    private TextView tvImageHint;
-    private Uri selectedImageUri = null; // 新しく選んだ画像
-    private boolean hasNewImage = false; // 新しい画像を選択したかどうか
+    private Bitmap editBitmap = null; // 選択された画像
+    private boolean hasNewImage = false;
 
     private List<LinearAlgebraActivity.LAItem> itemList = new ArrayList<>();
     private LinearAlgebraActivity.LAItem currentItem;
 
-    // データ入力用 Spinner リスト
     private List<String> algebraTitles;
 
     @Override
@@ -60,38 +57,28 @@ public class LAEditActivity extends AppCompatActivity {
 
         btnClose = findViewById(R.id.btn_close_edit);
         btnSave = findViewById(R.id.btn_save_edit);
+        ibEditImage = findViewById(R.id.ib_edit_image);
+        tvEditImageHint = findViewById(R.id.tv_edit_image_hint);
+
         tvTitle = findViewById(R.id.tv_edit_title);
         spinnerEdit = findViewById(R.id.spinner_edit);
         editTextEdit = findViewById(R.id.et_edit_text);
 
-        // 画像関連
-        frameImageButton = findViewById(R.id.spinner_edit).getParent() instanceof LinearLayout
-                ? null : null; // ← 実際はレイアウト構造に合わせて取得（今回別に変数不要）
-        imageButton = findViewById(R.id.edit_image_button);
-        tvImageHint = findViewById(R.id.tv_edit_image_hint);
-
-        // レイアウトに edit_image_button, tv_edit_image_hint を追加済み想定
-        // (後述の la_edit.xml 参照)
-
-        // インテント
         itemIndex = getIntent().getIntExtra("INDEX", -1);
         activityTitle = getIntent().getStringExtra("ACTIVITY_TITLE");
-        if (activityTitle == null) {
-            activityTitle = "編集中";
-        }
+        if (activityTitle == null) activityTitle = "編集中";
         tvTitle.setText(activityTitle + " - 編集中");
 
-        // itemList読み込み & currentItem確定
         itemList = loadItemListFromPrefs();
         if (itemIndex >= 0 && itemIndex < itemList.size()) {
             currentItem = itemList.get(itemIndex);
         }
 
-        // Spinnerセット (index=0: 「タイトル選択」 + 既存メニュー)
-        String[] fromRes = getResources().getStringArray(R.array.linear_algebra_menu);
+        // Spinner
+        String[] arr = getResources().getStringArray(R.array.linear_algebra_menu);
         algebraTitles = new ArrayList<>();
         algebraTitles.add("タイトル選択");
-        for (String s : fromRes) {
+        for (String s : arr) {
             algebraTitles.add(s);
         }
         ArrayAdapter<String> spAdapter = new ArrayAdapter<>(this,
@@ -99,109 +86,97 @@ public class LAEditActivity extends AppCompatActivity {
         spAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerEdit.setAdapter(spAdapter);
 
-        // 既存アイテムの表示
         if (currentItem != null) {
-            // Spinner
             setSpinnerSelection(spinnerEdit, currentItem.spinnerText);
-            // EditText
             editTextEdit.setText(currentItem.editText);
 
-            // 画像
-            Bitmap bmp = decodeBase64ToBitmap(currentItem.base64Image, 300);
-            if (bmp != null) {
-                imageButton.setImageBitmap(bmp);
-                tvImageHint.setVisibility(View.GONE);
+            // 既存画像を解像度高め(1200)で復元
+            Bitmap existing = decodeBase64ToBitmap(currentItem.base64Image, 1200);
+            if (existing != null) {
+                editBitmap = existing;
+                ibEditImage.setImageBitmap(editBitmap);
+                tvEditImageHint.setVisibility(View.GONE);
             } else {
-                imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
-                tvImageHint.setVisibility(View.VISIBLE);
+                // 画像なし状態
+                ibEditImage.setImageResource(android.R.drawable.ic_menu_gallery);
+                tvEditImageHint.setVisibility(View.VISIBLE);
             }
         }
 
-        // 画像タップでギャラリーから変更
-        imageButton.setOnClickListener(v -> openGalleryForEdit());
+        // ImageButton -> ギャラリー
+        ibEditImage.setOnClickListener(v -> openGalleryForEdit());
 
-        // 「✖」ボタン
         btnClose.setOnClickListener(v -> finishToLinearAlgebra());
-
-        // 「保存」ボタン
         btnSave.setOnClickListener(v -> {
             if (currentItem == null) {
                 finishToLinearAlgebra();
                 return;
             }
-            String newSpinnerText = getSelectedSpinnerTitle();
-            String newEditText = editTextEdit.getText().toString().trim();
-
-            // バリデーション (タイトルが「タイトル選択」ではないか, テキストが空でないか)
-            // 画像変更は任意: ユーザーが変更しなければ currentItem.base64Image を使う
-            if (newSpinnerText == null || newSpinnerText.equals("タイトル選択")) {
+            String spinnerVal = getSpinnerVal();
+            String newText = editTextEdit.getText().toString().trim();
+            if (spinnerVal.equals("タイトル選択")) {
                 Toast.makeText(this, "タイトルを選択してください", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (newEditText.isEmpty()) {
+            if (newText.isEmpty()) {
                 Toast.makeText(this, "テキストを入力してください", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // 更新
-            currentItem.spinnerText = newSpinnerText;
-            currentItem.editText = newEditText;
+            currentItem.spinnerText = spinnerVal;
+            currentItem.editText = newText;
 
-            // 画像変更があれば上書き
-            if (hasNewImage && selectedImageUri != null) {
-                String newBase64 = encodeImageToBase64(selectedImageUri);
-                if (newBase64 != null) {
-                    currentItem.base64Image = newBase64;
+            // 画像を更新
+            if (hasNewImage && editBitmap != null) {
+                String b64 = encodeBitmapToBase64(editBitmap);
+                if (b64 != null) {
+                    currentItem.base64Image = b64;
                 }
             }
-
             itemList.set(itemIndex, currentItem);
             saveItemListToPrefs(itemList);
-
             finishToLinearAlgebra();
         });
     }
 
-    // ===============================
-    // ギャラリー (編集用)
-    // ===============================
     private void openGalleryForEdit() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(intent, PICK_IMAGE_EDIT);
+        startActivityForResult(intent, REQUEST_EDIT_GALLERY);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_IMAGE_EDIT && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            selectedImageUri = data.getData();
-            hasNewImage = true;
-            // サムネイル表示
-            Bitmap scaled = getScaledBitmapFromUri(selectedImageUri, 300);
-            if (scaled != null) {
-                imageButton.setImageBitmap(scaled);
-                tvImageHint.setVisibility(View.GONE);
+        if (requestCode == REQUEST_EDIT_GALLERY && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            // 画質向上(1200)
+            Bitmap newBmp = decodeUriToBitmap(uri, 1200);
+            if (newBmp != null) {
+                editBitmap = newBmp;
+                hasNewImage = true;
+                // ImageButton にセット & テキスト非表示
+                ibEditImage.setImageBitmap(editBitmap);
+                tvEditImageHint.setVisibility(View.GONE);
+            } else {
+                Toast.makeText(this, "画像取得に失敗しました", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    // ===============================
-    // Spinner ユーティリティ
-    // ===============================
-    private void setSpinnerSelection(Spinner spinner, String target) {
-        for (int i = 0; i < spinner.getCount(); i++) {
-            if (spinner.getItemAtPosition(i).equals(target)) {
-                spinner.setSelection(i);
-                return;
-            }
-        }
-        spinner.setSelection(0);
-    }
-
-    private String getSelectedSpinnerTitle() {
+    private String getSpinnerVal() {
         int pos = spinnerEdit.getSelectedItemPosition();
         if (pos == 0) return "タイトル選択";
         return spinnerEdit.getItemAtPosition(pos).toString();
+    }
+
+    private void setSpinnerSelection(Spinner sp, String val) {
+        for (int i = 0; i < sp.getCount(); i++) {
+            if (sp.getItemAtPosition(i).equals(val)) {
+                sp.setSelection(i);
+                return;
+            }
+        }
+        sp.setSelection(0);
     }
 
     private void finishToLinearAlgebra() {
@@ -211,17 +186,14 @@ public class LAEditActivity extends AppCompatActivity {
         finish();
     }
 
-    // ===============================
-    // SharedPreferences
-    // ===============================
+    //=================== SharedPreferences ===================
     private List<LinearAlgebraActivity.LAItem> loadItemListFromPrefs() {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        String serialized = prefs.getString(KEY_ITEM_LIST, "");
+        String data = prefs.getString(KEY_ITEM_LIST, "");
         List<LinearAlgebraActivity.LAItem> result = new ArrayList<>();
-        if (serialized.isEmpty()) {
-            return result;
-        }
-        String[] items = serialized.split(ITEM_DELIMITER);
+        if (data.isEmpty()) return result;
+
+        String[] items = data.split(ITEM_DELIMITER);
         for (String chunk : items) {
             if (chunk.trim().isEmpty()) continue;
             String[] fields = chunk.split(FIELD_DELIMITER);
@@ -242,43 +214,8 @@ public class LAEditActivity extends AppCompatActivity {
         prefs.edit().putString(KEY_ITEM_LIST, sb.toString()).apply();
     }
 
-    // ===============================
-    // 画像処理
-    // ===============================
-    private String encodeImageToBase64(Uri uri) {
-        Bitmap bmp = getScaledBitmapFromUri(uri, 2000);
-        if (bmp == null) return null;
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bmp.compress(Bitmap.CompressFormat.PNG, 100, baos);
-        byte[] bytes = baos.toByteArray();
-        return Base64.encodeToString(bytes, Base64.DEFAULT);
-    }
-
-    private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
-        try {
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (raw == null) return null;
-            int w = raw.getWidth(), h = raw.getHeight();
-            if (w > maxSize || h > maxSize) {
-                float ratio = (float) w / (float) h;
-                if (ratio > 1f) {
-                    w = maxSize;
-                    h = (int)(maxSize / ratio);
-                } else {
-                    h = maxSize;
-                    w = (int)(maxSize * ratio);
-                }
-                return Bitmap.createScaledBitmap(raw, w, h, true);
-            }
-            return raw;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private Bitmap getScaledBitmapFromUri(Uri uri, int maxSize) {
+    //=================== 画像処理 ===================
+    private Bitmap decodeUriToBitmap(Uri uri, int maxSize) {
         try {
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
@@ -289,7 +226,7 @@ public class LAEditActivity extends AppCompatActivity {
             int w = opts.outWidth;
             int h = opts.outHeight;
             int inSampleSize = 1;
-            while ((w / inSampleSize) > maxSize || (h / inSampleSize) > maxSize) {
+            while (w / inSampleSize > maxSize || h / inSampleSize > maxSize) {
                 inSampleSize *= 2;
             }
             opts.inSampleSize = inSampleSize;
@@ -300,20 +237,45 @@ public class LAEditActivity extends AppCompatActivity {
             in.close();
             if (sampled == null) return null;
 
-            w = sampled.getWidth();
-            h = sampled.getHeight();
-            float ratio = (float) w / (float) h;
-            if (w > maxSize || h > maxSize) {
-                if (ratio > 1f) {
-                    w = maxSize;
-                    h = (int)(maxSize / ratio);
-                } else {
-                    h = maxSize;
-                    w = (int)(maxSize * ratio);
-                }
-                return Bitmap.createScaledBitmap(sampled, w, h, true);
-            }
-            return sampled;
+            return scaleBitmap(sampled, maxSize);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Bitmap scaleBitmap(Bitmap src, int maxSize) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        if (w <= maxSize && h <= maxSize) return src;
+        float ratio = (float) w / (float) h;
+        if (ratio > 1f) {
+            w = maxSize;
+            h = (int)(maxSize / ratio);
+        } else {
+            h = maxSize;
+            w = (int)(maxSize * ratio);
+        }
+        return Bitmap.createScaledBitmap(src, w, h, true);
+    }
+
+    private String encodeBitmapToBase64(Bitmap bmp) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
+        try {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (raw == null) return null;
+            return scaleBitmap(raw, maxSize);
         } catch (Exception e) {
             e.printStackTrace();
             return null;

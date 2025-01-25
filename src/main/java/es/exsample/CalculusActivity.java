@@ -18,16 +18,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 微分積分画面。
- * - 検索Spinnerで絞り込み
- * - ImageButtonに「画像選択」メッセージ
- * - データ入力用 Spinner: index=0 => 「タイトル選択」
- * - 編集/削除は CExpansionActivity, CEditActivity
- */
 public class CalculusActivity extends AppCompatActivity {
 
-    private static final int PICK_IMAGE_REQUEST = 1;
+    private static final int REQUEST_GALLERY = 1;
 
     public static class CalItem {
         public String base64Image;
@@ -40,21 +33,17 @@ public class CalculusActivity extends AppCompatActivity {
         }
     }
 
-    private Uri selectedImageUri;
-    private boolean hasSelectedImage = false;
-    private String selectedSpinnerItem;
-    private boolean isSpinnerTitleSelected = false;
-    private String enteredText;
-
     private ImageButton imageButton;
-    private TextView tvImageButtonHint;
+    private TextView tvImageHint;
     private Spinner spinner;
     private EditText editTextField;
     private Button btnAdd;
+    private Spinner searchSpinner;
     private LinearLayout dynamicContainer;
 
-    private Spinner searchSpinner;
-    private List<String> searchSpinnerItems;
+    private Bitmap selectedBitmap = null;
+    private boolean isSpinnerSelected = false;
+    private String selectedSpinnerItem;
 
     private List<CalItem> itemList = new ArrayList<>();
 
@@ -63,7 +52,8 @@ public class CalculusActivity extends AppCompatActivity {
     private static final String ITEM_DELIMITER = "@@@";
     private static final String FIELD_DELIMITER = "###";
 
-    private List<String> calcTitles; // "タイトル選択" + "微分" "積分" etc
+    private List<String> calcTitles;
+    private List<String> searchSpinnerItems;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,81 +63,100 @@ public class CalculusActivity extends AppCompatActivity {
         Button btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> finish());
 
+        // ImageButton + hint
         imageButton = findViewById(R.id.image_button);
-        tvImageButtonHint = findViewById(R.id.tv_image_button_hint);
+        tvImageHint = findViewById(R.id.tv_image_button_hint);
+
         spinner = findViewById(R.id.spinner);
         editTextField = findViewById(R.id.edit_text);
         btnAdd = findViewById(R.id.btn_add);
-        dynamicContainer = findViewById(R.id.dynamic_table_container);
         searchSpinner = findViewById(R.id.search_spinner);
+        dynamicContainer = findViewById(R.id.dynamic_table_container);
 
-        // データ入力用Spinner: index=0 => 「タイトル選択」
+        // Spinner
         String[] fromRes = getResources().getStringArray(R.array.calculus_menu);
         calcTitles = new ArrayList<>();
         calcTitles.add("タイトル選択");
         for (String s : fromRes) {
             calcTitles.add(s);
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+        ArrayAdapter<String> spAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, calcTitles);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+        spAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(spAdapter);
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) {
-                    // 「タイトル選択」
                     selectedSpinnerItem = null;
-                    isSpinnerTitleSelected = false;
+                    isSpinnerSelected = false;
                 } else {
                     selectedSpinnerItem = calcTitles.get(position);
-                    isSpinnerTitleSelected = true;
+                    isSpinnerSelected = true;
                 }
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        // 画像選択
+        // ImageButton -> ギャラリー
         imageButton.setOnClickListener(v -> openGallery());
 
-        // 追加
         btnAdd.setOnClickListener(v -> {
-            enteredText = editTextField.getText().toString().trim();
-            if (!hasSelectedImage) {
+            String textVal = editTextField.getText().toString().trim();
+            if (selectedBitmap == null) {
                 Toast.makeText(this, "画像を選択してください", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (!isSpinnerTitleSelected) {
+            if (!isSpinnerSelected) {
                 Toast.makeText(this, "タイトルを選択してください", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (enteredText.isEmpty()) {
+            if (textVal.isEmpty()) {
                 Toast.makeText(this, "テキストを入力してください", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            String base64 = encodeImageToBase64(selectedImageUri);
+            String base64 = encodeBitmapToBase64(selectedBitmap);
             if (base64 == null) {
-                Toast.makeText(this, "画像の取得に失敗しました", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "画像エンコードに失敗しました", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            CalItem item = new CalItem(base64, selectedSpinnerItem, enteredText);
+            CalItem item = new CalItem(base64, selectedSpinnerItem, textVal);
             itemList.add(item);
-
             reloadDynamicViews(itemList);
             saveItemListToPrefs(itemList);
+
             clearInputFields();
         });
 
-        // SharedPreferences読み込み
         itemList = loadItemListFromPrefs();
         reloadDynamicViews(itemList);
 
-        // 検索Spinner設定
         setupSearchSpinner();
+    }
+
+    private void openGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_GALLERY);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, @Nullable Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQUEST_GALLERY && res == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            Bitmap bmp = decodeUriToBitmap(uri, 600);
+            if (bmp != null) {
+                selectedBitmap = bmp;
+                imageButton.setImageBitmap(bmp);
+                tvImageHint.setVisibility(View.GONE);
+            } else {
+                Toast.makeText(this, "画像の取得に失敗しました", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setupSearchSpinner() {
@@ -157,10 +166,10 @@ public class CalculusActivity extends AppCompatActivity {
         for (String s : fromRes) {
             searchSpinnerItems.add(s);
         }
-        ArrayAdapter<String> sAdapter = new ArrayAdapter<>(this,
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, searchSpinnerItems);
-        sAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        searchSpinner.setAdapter(sAdapter);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        searchSpinner.setAdapter(adapter);
 
         searchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -183,42 +192,6 @@ public class CalculusActivity extends AppCompatActivity {
         });
     }
 
-    private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(intent, PICK_IMAGE_REQUEST);
-    }
-
-    @Override
-    protected void onActivityResult(int reqCode, int resCode, @Nullable Intent data) {
-        super.onActivityResult(reqCode, resCode, data);
-        if (reqCode == PICK_IMAGE_REQUEST && resCode == RESULT_OK && data != null && data.getData() != null) {
-            selectedImageUri = data.getData();
-            hasSelectedImage = true;
-            Bitmap scaled = getScaledBitmapFromUri(selectedImageUri, 300);
-            if (scaled != null) {
-                imageButton.setImageBitmap(scaled);
-                tvImageButtonHint.setVisibility(View.GONE);
-            } else {
-                imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
-                tvImageButtonHint.setVisibility(View.VISIBLE);
-                hasSelectedImage = false;
-            }
-        }
-    }
-
-    private void clearInputFields() {
-        selectedImageUri = null;
-        hasSelectedImage = false;
-        imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
-        tvImageButtonHint.setVisibility(View.VISIBLE);
-
-        spinner.setSelection(0);
-        isSpinnerTitleSelected = false;
-        selectedSpinnerItem = null;
-
-        editTextField.setText("");
-    }
-
     private void reloadDynamicViews(List<CalItem> list) {
         dynamicContainer.removeAllViews();
         for (int i = 0; i < list.size(); i++) {
@@ -234,40 +207,43 @@ public class CalculusActivity extends AppCompatActivity {
         ));
         row.setPadding(8, 8, 8, 8);
 
-        ImageView imageView = new ImageView(this);
-        TableRow.LayoutParams imgParams = new TableRow.LayoutParams(0,
-                TableRow.LayoutParams.MATCH_PARENT, 1f);
-        imageView.setLayoutParams(imgParams);
+        ImageView iv = new ImageView(this);
+        TableRow.LayoutParams ivParams = new TableRow.LayoutParams(
+                0, TableRow.LayoutParams.MATCH_PARENT, 1f
+        );
+        iv.setLayoutParams(ivParams);
 
         Bitmap small = decodeBase64ToBitmap(item.base64Image, 300);
         if (small != null) {
-            imageView.setImageBitmap(small);
+            iv.setImageBitmap(small);
         } else {
-            imageView.setImageResource(android.R.drawable.ic_menu_gallery);
+            iv.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
-        TableRow.LayoutParams txtParams = new TableRow.LayoutParams(0,
-                TableRow.LayoutParams.MATCH_PARENT, 2f);
+        TableRow.LayoutParams txtParams = new TableRow.LayoutParams(
+                0, TableRow.LayoutParams.MATCH_PARENT, 2f
+        );
         textLayout.setLayoutParams(txtParams);
 
-        TextView spinnerTxt = new TextView(this);
-        spinnerTxt.setLayoutParams(new LinearLayout.LayoutParams(
+        TextView tvSpin = new TextView(this);
+        tvSpin.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        spinnerTxt.setText(item.spinnerText);
+        tvSpin.setText(item.spinnerText);
 
-        TextView editTxt = new TextView(this);
-        editTxt.setLayoutParams(new LinearLayout.LayoutParams(
+        TextView tvEdt = new TextView(this);
+        tvEdt.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f));
-        editTxt.setText(item.editText);
+        tvEdt.setText(item.editText);
 
-        textLayout.addView(spinnerTxt);
-        textLayout.addView(editTxt);
+        textLayout.addView(tvSpin);
+        textLayout.addView(tvEdt);
 
-        row.addView(imageView);
+        row.addView(iv);
         row.addView(textLayout);
 
+        // 拡大表示
         row.setOnClickListener(v -> {
             Intent intent = new Intent(this, CExpansionActivity.class);
             intent.putExtra("INDEX", position);
@@ -278,9 +254,18 @@ public class CalculusActivity extends AppCompatActivity {
         dynamicContainer.addView(row);
     }
 
-    // ================================
-    // SharedPreferences
-    // ================================
+    private void clearInputFields() {
+        selectedBitmap = null;
+        imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
+        tvImageHint.setVisibility(View.VISIBLE);
+
+        spinner.setSelection(0);
+        isSpinnerSelected = false;
+        selectedSpinnerItem = null;
+
+        editTextField.setText("");
+    }
+
     private void saveItemListToPrefs(List<CalItem> list) {
         StringBuilder sb = new StringBuilder();
         for (CalItem c : list) {
@@ -288,63 +273,29 @@ public class CalculusActivity extends AppCompatActivity {
                     .append(c.spinnerText).append(FIELD_DELIMITER)
                     .append(c.editText).append(ITEM_DELIMITER);
         }
-        SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        prefs.edit().putString(KEY_ITEM_LIST, sb.toString()).apply();
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(KEY_ITEM_LIST, sb.toString())
+                .apply();
     }
 
     private List<CalItem> loadItemListFromPrefs() {
-        SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        String serialized = prefs.getString(KEY_ITEM_LIST, "");
+        String s = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getString(KEY_ITEM_LIST, "");
         List<CalItem> result = new ArrayList<>();
-        if (serialized.isEmpty()) return result;
+        if (s.isEmpty()) return result;
 
-        String[] chunks = serialized.split(ITEM_DELIMITER);
-        for (String chunk : chunks) {
-            if (chunk.trim().isEmpty()) continue;
-            String[] fields = chunk.split(FIELD_DELIMITER);
-            if (fields.length < 3) continue;
-            result.add(new CalItem(fields[0], fields[1], fields[2]));
+        String[] items = s.split(ITEM_DELIMITER);
+        for (String it : items) {
+            if (it.trim().isEmpty()) continue;
+            String[] f = it.split(FIELD_DELIMITER);
+            if (f.length < 3) continue;
+            result.add(new CalItem(f[0], f[1], f[2]));
         }
         return result;
     }
 
-    // ================================
-    // 画像関連
-    // ================================
-    private String encodeImageToBase64(Uri uri) {
-        Bitmap bm = getScaledBitmapFromUri(uri, 2000);
-        if (bm == null) return null;
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bm.compress(Bitmap.CompressFormat.PNG, 100, baos);
-        byte[] bytes = baos.toByteArray();
-        return Base64.encodeToString(bytes, Base64.DEFAULT);
-    }
-
-    private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
-        try {
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (raw == null) return null;
-            int w = raw.getWidth(), h = raw.getHeight();
-            if (w > maxSize || h > maxSize) {
-                float r = (float) w / (float) h;
-                if (r > 1f) {
-                    w = maxSize;
-                    h = (int)(maxSize / r);
-                } else {
-                    h = maxSize;
-                    w = (int)(maxSize * r);
-                }
-                return Bitmap.createScaledBitmap(raw, w, h, true);
-            }
-            return raw;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private Bitmap getScaledBitmapFromUri(Uri uri, int maxSize) {
+    // 画像処理
+    private Bitmap decodeUriToBitmap(Uri uri, int maxSize) {
         try {
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
@@ -362,24 +313,49 @@ public class CalculusActivity extends AppCompatActivity {
             opts.inJustDecodeBounds = false;
 
             in = getContentResolver().openInputStream(uri);
-            Bitmap sample = BitmapFactory.decodeStream(in, null, opts);
+            Bitmap sampled = BitmapFactory.decodeStream(in, null, opts);
             in.close();
-            if (sample == null) return null;
+            if (sampled == null) return null;
 
-            w = sample.getWidth();
-            h = sample.getHeight();
-            float r = (float) w / (float) h;
-            if (w > maxSize || h > maxSize) {
-                if (r > 1f) {
-                    w = maxSize;
-                    h = (int)(maxSize / r);
-                } else {
-                    h = maxSize;
-                    w = (int)(maxSize * r);
-                }
-                return Bitmap.createScaledBitmap(sample, w, h, true);
-            }
-            return sample;
+            return scaleBitmap(sampled, maxSize);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Bitmap scaleBitmap(Bitmap src, int maxSize) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        if (w <= maxSize && h <= maxSize) return src;
+        float r = (float) w / (float) h;
+        if (r > 1f) {
+            w = maxSize;
+            h = (int)(maxSize / r);
+        } else {
+            h = maxSize;
+            w = (int)(maxSize * r);
+        }
+        return Bitmap.createScaledBitmap(src, w, h, true);
+    }
+
+    private String encodeBitmapToBase64(Bitmap bmp) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
+        try {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (raw == null) return null;
+            return scaleBitmap(raw, maxSize);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -389,7 +365,6 @@ public class CalculusActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 編集/削除後の再読み込み
         itemList = loadItemListFromPrefs();
         reloadDynamicViews(itemList);
     }

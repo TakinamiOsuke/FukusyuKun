@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@android:color/white">
 
-    <!-- 上部の戻るボタンとTextView -->
+    <!-- 上部バー -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="104dp"
@@ -40,8 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="4dp"
-        android:spinnerMode="dialog"
-        />
+        android:spinnerMode="dialog" />
 
     <!-- TableRow (ImageButton + Spinner + EditText) -->
     <TableRow
@@ -49,7 +48,6 @@
         android:layout_height="wrap_content"
         android:padding="8dp">
 
-        <!-- FrameLayout内に ImageButton + "画像選択"Text -->
         <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -60,7 +58,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:backgroundTint="#EEEEEE"
-                android:scaleType="centerCrop"/>
+                android:scaleType="centerCrop" />
 
             <TextView
                 android:id="@+id/tv_image_button_hint"
@@ -69,11 +67,9 @@
                 android:layout_gravity="center"
                 android:text="画像選択"
                 android:textColor="#000000"
-                android:textStyle="bold"
-                />
+                android:textStyle="bold"/>
         </FrameLayout>
 
-        <!-- Spinner + EditText -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -85,23 +81,23 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:background="#FFFFFF"
-                android:spinnerMode="dialog" />
+                android:spinnerMode="dialog"
+                android:background="#FFFFFF" />
 
             <EditText
                 android:id="@+id/edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="2"
-                android:background="#FFFFFF"
-                android:gravity="top"
                 android:hint="テキスト入力"
-                android:lines="5" />
+                android:gravity="top"
+                android:lines="5"
+                android:background="#FFFFFF" />
         </LinearLayout>
 
     </TableRow>
 
-    <!-- ボタンのTableRow -->
+    <!-- 追加ボタン -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -119,7 +115,7 @@
             android:textStyle="bold" />
     </TableRow>
 
-    <!-- スクロール可能なレイアウト -->
+    <!-- スクロール領域 -->
     <ScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
@@ -131,9 +127,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-            <!-- 動的にTableRowを追加するエリア -->
+            <!-- 動的に追加するエリア -->
         </LinearLayout>
-
     </ScrollView>
 
 </LinearLayout>

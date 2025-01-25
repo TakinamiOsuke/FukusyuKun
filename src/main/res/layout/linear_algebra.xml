@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@android:color/white"
-    tools:context=".LinearAlgebraActivity">
+    android:background="@android:color/white">
 
-    <!-- 上部の戻るボタンとTextView -->
+    <!-- 上部バー -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="104dp"
@@ -36,22 +34,21 @@
             android:textStyle="bold" />
     </RelativeLayout>
 
-    <!-- 検索用 Spinner (テキスト入力でなく、Spinnerで項目を選ぶ) -->
+    <!-- 検索用 Spinner -->
     <Spinner
         android:id="@+id/search_spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="4dp"
-        android:spinnerMode="dialog"
-        />
+        android:spinnerMode="dialog" />
 
-    <!-- TableRow (ImageButton + Spinner + EditText) -->
+    <!-- 画像選択 + タイトルSpinner + EditText の TableRow -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp">
 
-        <!-- FrameLayout内に ImageButton + "画像選択"Text -->
+        <!-- FrameLayout に ImageButton & 「画像選択」テキストを重ねる -->
         <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -62,7 +59,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:backgroundTint="#EEEEEE"
-                android:scaleType="centerCrop"/>
+                android:scaleType="centerCrop" />
 
             <TextView
                 android:id="@+id/tv_image_button_hint"
@@ -71,11 +68,9 @@
                 android:layout_gravity="center"
                 android:text="画像選択"
                 android:textColor="#000000"
-                android:textStyle="bold"
-                />
+                android:textStyle="bold"/>
         </FrameLayout>
 
-        <!-- Spinner and EditText -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -87,8 +82,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:background="#FFFFFF"
-                android:spinnerMode="dialog" />
+                android:spinnerMode="dialog"
+                android:background="#FFFFFF" />
 
             <EditText
                 android:id="@+id/edit_text"
@@ -103,7 +98,7 @@
 
     </TableRow>
 
-    <!-- ボタンのTableRow -->
+    <!-- 追加ボタン -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -121,7 +116,7 @@
             android:textStyle="bold" />
     </TableRow>
 
-    <!-- スクロール可能なレイアウト -->
+    <!-- リスト表示 (スクロール) -->
     <ScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
@@ -133,7 +128,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-            <!-- 動的にTableRowを追加するエリア -->
+            <!-- 動的追加エリア -->
         </LinearLayout>
 
     </ScrollView>

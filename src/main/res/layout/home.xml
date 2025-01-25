@@ -29,26 +29,26 @@
     <Button
         android:id="@+id/btn_linear_algebra"
         android:layout_width="250dp"
-        android:layout_height="wrap_content"
+        android:layout_height="71dp"
         android:layout_gravity="center"
         android:backgroundTint="#4169E1"
         android:text="線形代数"
         android:textColor="@android:color/white"
-        android:textStyle="bold"
-        android:textSize="18sp" />
+        android:textSize="20sp"
+        android:textStyle="bold" />
 
     <!-- ボタン: 微分積分 -->
     <Button
         android:id="@+id/btn_calculus"
         android:layout_width="250dp"
-        android:layout_height="wrap_content"
+        android:layout_height="73dp"
         android:layout_gravity="center"
         android:layout_marginTop="16dp"
         android:backgroundTint="#4169E1"
         android:text="微分積分"
         android:textColor="@android:color/white"
-        android:textStyle="bold"
-        android:textSize="18sp" />
+        android:textSize="20sp"
+        android:textStyle="bold" />
 
     <!-- 下部の余白 -->
     <LinearLayout
