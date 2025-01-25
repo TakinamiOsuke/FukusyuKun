@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white"
     android:orientation="vertical"
+    android:background="@android:color/white"
     tools:context=".LinearAlgebraActivity">
 
     <!-- 上部の戻るボタンとTextView -->
@@ -37,15 +36,13 @@
             android:textStyle="bold" />
     </RelativeLayout>
 
-    <!-- 検索バー -->
-    <SearchView
-        android:id="@+id/search_view"
+    <!-- 検索用 Spinner (テキスト入力でなく、Spinnerで項目を選ぶ) -->
+    <Spinner
+        android:id="@+id/search_spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#EEEEEE"
-        android:queryHint="キーワードを検索"
-        android:iconifiedByDefault="false"
         android:layout_margin="4dp"
+        android:spinnerMode="dialog"
         />
 
     <!-- TableRow (ImageButton + Spinner + EditText) -->
@@ -54,14 +51,29 @@
         android:layout_height="wrap_content"
         android:padding="8dp">
 
-        <!-- ImageButton -->
-        <ImageButton
-            android:id="@+id/image_button"
+        <!-- FrameLayout内に ImageButton + "画像選択"Text -->
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:backgroundTint="#EEEEEE"
-            tools:srcCompat="@android:drawable/ic_menu_gallery" />
+            android:layout_weight="1">
+
+            <ImageButton
+                android:id="@+id/image_button"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:backgroundTint="#EEEEEE"
+                android:scaleType="centerCrop"/>
+
+            <TextView
+                android:id="@+id/tv_image_button_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="画像選択"
+                android:textColor="#000000"
+                android:textStyle="bold"
+                />
+        </FrameLayout>
 
         <!-- Spinner and EditText -->
         <LinearLayout
@@ -75,9 +87,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:entries="@array/linear_algebra_menu"
                 android:background="#FFFFFF"
-                android:textStyle="bold" />
+                android:spinnerMode="dialog" />
 
             <EditText
                 android:id="@+id/edit_text"
@@ -128,5 +139,3 @@
     </ScrollView>
 
 </LinearLayout>
-
-

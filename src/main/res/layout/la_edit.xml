@@ -13,7 +13,6 @@
         android:background="#B0C4DE"
         android:padding="8dp">
 
-        <!-- ✖ボタン -->
         <Button
             android:id="@+id/btn_close_edit"
             android:layout_width="wrap_content"
@@ -24,7 +23,6 @@
             android:textStyle="bold"
             android:textColor="@android:color/white" />
 
-        <!-- 中央タイトル (例: "線形代数 - 編集中") -->
         <TextView
             android:id="@+id/tv_edit_title"
             android:layout_width="wrap_content"
@@ -36,7 +34,6 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <!-- 右端の保存ボタン -->
         <Button
             android:id="@+id/btn_save_edit"
             android:layout_width="wrap_content"
@@ -49,28 +46,58 @@
 
     </RelativeLayout>
 
-    <!-- 下部の編集領域: Spinner + EditText -->
-    <!-- 大きな編集を想定するなら ScrollView で包んでもOK -->
-    <LinearLayout
+    <!-- コンパクトなレイアウト: 画像変更 + タイトル選択 + テキスト -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent">
 
-        <Spinner
-            android:id="@+id/spinner_edit"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:entries="@array/linear_algebra_menu" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <EditText
-            android:id="@+id/et_edit_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="編集内容"
-            android:gravity="top"
-            android:minLines="5" />
-    </LinearLayout>
+            <!-- 画像編集用: FrameLayoutで ImageButton + テキスト -->
+            <FrameLayout
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="16dp">
+
+                <ImageButton
+                    android:id="@+id/edit_image_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:backgroundTint="#EEEEEE"
+                    />
+
+                <TextView
+                    android:id="@+id/tv_edit_image_hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="画像選択"
+                    android:textColor="#000000"
+                    android:textStyle="bold"/>
+            </FrameLayout>
+
+            <Spinner
+                android:id="@+id/spinner_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                />
+
+            <EditText
+                android:id="@+id/et_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="編集内容"
+                android:gravity="top"
+                android:minLines="5" />
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>

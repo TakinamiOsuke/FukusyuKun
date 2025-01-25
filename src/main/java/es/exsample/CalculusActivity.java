@@ -20,24 +20,19 @@ import java.util.List;
 
 /**
  * 微分積分画面。
- *  - レイアウト：calculus.xml
- *  - 線形代数画面(LinearAlgebraActivity)を参考にほぼ同じ機能を実装
+ * - 検索Spinnerで絞り込み
+ * - ImageButtonに「画像選択」メッセージ
+ * - データ入力用 Spinner: index=0 => 「タイトル選択」
+ * - 編集/削除は CExpansionActivity, CEditActivity
  */
 public class CalculusActivity extends AppCompatActivity {
 
     private static final int PICK_IMAGE_REQUEST = 1;
 
-    // ================================
-    // データ保持用クラス
-    // ================================
     public static class CalItem {
-        // 画像をBase64エンコードした文字列 (PNG, 100%)
         public String base64Image;
-        // Spinnerで選択された項目
         public String spinnerText;
-        // EditTextに入力されたテキスト
         public String editText;
-
         public CalItem(String base64Image, String spinnerText, String editText) {
             this.base64Image = base64Image;
             this.spinnerText = spinnerText;
@@ -45,438 +40,356 @@ public class CalculusActivity extends AppCompatActivity {
         }
     }
 
-    // ================================
-    // フィールド変数
-    // ================================
     private Uri selectedImageUri;
+    private boolean hasSelectedImage = false;
     private String selectedSpinnerItem;
+    private boolean isSpinnerTitleSelected = false;
     private String enteredText;
 
     private ImageButton imageButton;
+    private TextView tvImageButtonHint;
     private Spinner spinner;
-    private EditText editText;
+    private EditText editTextField;
     private Button btnAdd;
     private LinearLayout dynamicContainer;
-    private SearchView searchView;
 
-    // メモリ上のリスト（アプリ起動中はこちらを参照）
+    private Spinner searchSpinner;
+    private List<String> searchSpinnerItems;
+
     private List<CalItem> itemList = new ArrayList<>();
 
-    // ================================
-    // 定数 (SharedPreferences)
-    // ================================
     private static final String PREF_NAME = "CalculusPrefs";
     private static final String KEY_ITEM_LIST = "CAL_ITEM_LIST";
+    private static final String ITEM_DELIMITER = "@@@";
+    private static final String FIELD_DELIMITER = "###";
 
-    // 区切り文字（アイテム間とフィールド間）
-    private static final String ITEM_DELIMITER = "@@@";   // アイテム同士の区切り
-    private static final String FIELD_DELIMITER = "###";  // 各フィールドの区切り
+    private List<String> calcTitles; // "タイトル選択" + "微分" "積分" etc
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.calculus);
 
-        // 各ビューの取得
         Button btnBack = findViewById(R.id.btn_back);
-        imageButton = findViewById(R.id.image_button);
-        spinner = findViewById(R.id.spinner);
-        editText = findViewById(R.id.edit_text);
-        btnAdd = findViewById(R.id.btn_add);
-        dynamicContainer = findViewById(R.id.dynamic_table_container);
-        searchView = findViewById(R.id.search_view);
-
-        // 戻るボタン
         btnBack.setOnClickListener(v -> finish());
 
-        // ギャラリーを開くボタン
-        imageButton.setOnClickListener(v -> openGallery());
+        imageButton = findViewById(R.id.image_button);
+        tvImageButtonHint = findViewById(R.id.tv_image_button_hint);
+        spinner = findViewById(R.id.spinner);
+        editTextField = findViewById(R.id.edit_text);
+        btnAdd = findViewById(R.id.btn_add);
+        dynamicContainer = findViewById(R.id.dynamic_table_container);
+        searchSpinner = findViewById(R.id.search_spinner);
 
-        // Spinner 選択
+        // データ入力用Spinner: index=0 => 「タイトル選択」
+        String[] fromRes = getResources().getStringArray(R.array.calculus_menu);
+        calcTitles = new ArrayList<>();
+        calcTitles.add("タイトル選択");
+        for (String s : fromRes) {
+            calcTitles.add(s);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, calcTitles);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                selectedSpinnerItem = parent.getItemAtPosition(position).toString();
+                if (position == 0) {
+                    // 「タイトル選択」
+                    selectedSpinnerItem = null;
+                    isSpinnerTitleSelected = false;
+                } else {
+                    selectedSpinnerItem = calcTitles.get(position);
+                    isSpinnerTitleSelected = true;
+                }
             }
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                selectedSpinnerItem = null;
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        // 追加ボタン
+        // 画像選択
+        imageButton.setOnClickListener(v -> openGallery());
+
+        // 追加
         btnAdd.setOnClickListener(v -> {
-            enteredText = editText.getText().toString().trim();
-            if (selectedImageUri != null && selectedSpinnerItem != null && !enteredText.isEmpty()) {
-                // 画像をBase64に変換（PNG, 100%）してリストに追加
-                String base64 = encodeImageToBase64(selectedImageUri);
-                if (base64 == null) {
-                    Toast.makeText(this, "画像の取得に失敗しました", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                CalItem item = new CalItem(base64, selectedSpinnerItem, enteredText);
-                itemList.add(item);
-
-                // 表示を更新
-                reloadDynamicViews(itemList);
-
-                // SharedPreferences に保存
-                saveItemListToPrefs(itemList);
-
-                // 入力内容をリセット
-                clearInputFields();
-            } else {
-                Toast.makeText(this, "すべての項目を入力してください", Toast.LENGTH_SHORT).show();
+            enteredText = editTextField.getText().toString().trim();
+            if (!hasSelectedImage) {
+                Toast.makeText(this, "画像を選択してください", Toast.LENGTH_SHORT).show();
+                return;
             }
+            if (!isSpinnerTitleSelected) {
+                Toast.makeText(this, "タイトルを選択してください", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (enteredText.isEmpty()) {
+                Toast.makeText(this, "テキストを入力してください", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String base64 = encodeImageToBase64(selectedImageUri);
+            if (base64 == null) {
+                Toast.makeText(this, "画像の取得に失敗しました", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            CalItem item = new CalItem(base64, selectedSpinnerItem, enteredText);
+            itemList.add(item);
+
+            reloadDynamicViews(itemList);
+            saveItemListToPrefs(itemList);
+            clearInputFields();
         });
 
-        // SharedPreferences からデータを読み込み
+        // SharedPreferences読み込み
         itemList = loadItemListFromPrefs();
-        // 表示を更新
         reloadDynamicViews(itemList);
 
-        // SearchView の動作設定
-        setupSearchView();
+        // 検索Spinner設定
+        setupSearchSpinner();
     }
 
-    /**
-     * 画像を選択するためにギャラリーを開く
-     */
+    private void setupSearchSpinner() {
+        searchSpinnerItems = new ArrayList<>();
+        searchSpinnerItems.add("すべて");
+        String[] fromRes = getResources().getStringArray(R.array.calculus_menu);
+        for (String s : fromRes) {
+            searchSpinnerItems.add(s);
+        }
+        ArrayAdapter<String> sAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, searchSpinnerItems);
+        sAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        searchSpinner.setAdapter(sAdapter);
+
+        searchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String sel = searchSpinnerItems.get(position);
+                if (sel.equals("すべて")) {
+                    reloadDynamicViews(itemList);
+                } else {
+                    List<CalItem> filtered = new ArrayList<>();
+                    for (CalItem c : itemList) {
+                        if (c.spinnerText.equals(sel)) {
+                            filtered.add(c);
+                        }
+                    }
+                    reloadDynamicViews(filtered);
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
 
-    /**
-     * ギャラリーから戻ってきた時の処理
-     */
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+    protected void onActivityResult(int reqCode, int resCode, @Nullable Intent data) {
+        super.onActivityResult(reqCode, resCode, data);
+        if (reqCode == PICK_IMAGE_REQUEST && resCode == RESULT_OK && data != null && data.getData() != null) {
             selectedImageUri = data.getData();
-
-            // リスト項目用のサムネイル表示 (300px)
-            Bitmap scaledBitmap = getScaledBitmapFromUri(selectedImageUri, 300);
-            if (scaledBitmap != null) {
-                imageButton.setImageBitmap(scaledBitmap);
+            hasSelectedImage = true;
+            Bitmap scaled = getScaledBitmapFromUri(selectedImageUri, 300);
+            if (scaled != null) {
+                imageButton.setImageBitmap(scaled);
+                tvImageButtonHint.setVisibility(View.GONE);
             } else {
                 imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
+                tvImageButtonHint.setVisibility(View.VISIBLE);
+                hasSelectedImage = false;
             }
         }
     }
 
-    /**
-     * 入力フィールドをリセット（画像・Spinner・テキスト）
-     */
     private void clearInputFields() {
         selectedImageUri = null;
-        selectedSpinnerItem = null;
-        enteredText = null;
-
-        // ImageButton を初期アイコンに戻す
+        hasSelectedImage = false;
         imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
-        // Spinner を先頭に戻す
+        tvImageButtonHint.setVisibility(View.VISIBLE);
+
         spinner.setSelection(0);
-        // EditText をクリア
-        editText.setText("");
+        isSpinnerTitleSelected = false;
+        selectedSpinnerItem = null;
+
+        editTextField.setText("");
     }
 
-    /**
-     * itemList の内容をダイナミックに再描画
-     * 重複表示を防ぐため、一度 container をクリアしてから再生成する
-     */
     private void reloadDynamicViews(List<CalItem> list) {
         dynamicContainer.removeAllViews();
-
         for (int i = 0; i < list.size(); i++) {
-            CalItem item = list.get(i);
-            addDynamicItem(dynamicContainer, item, i);
+            addDynamicItem(list.get(i), i);
         }
     }
 
-    /**
-     * 動的に TableRow を生成して追加
-     *  - 画像は小さめ (例: 300px) でデコードして表示 -> レイアウト崩れ防止
-     */
-    private void addDynamicItem(LinearLayout container, CalItem item, int position) {
-        // 新しい TableRow を作成 (レイアウト崩れしにくい横並び)
-        TableRow newRow = new TableRow(this);
-        TableRow.LayoutParams rowParams = new TableRow.LayoutParams(
+    private void addDynamicItem(CalItem item, int position) {
+        TableRow row = new TableRow(this);
+        row.setLayoutParams(new TableRow.LayoutParams(
                 TableRow.LayoutParams.MATCH_PARENT,
                 TableRow.LayoutParams.WRAP_CONTENT
-        );
-        newRow.setLayoutParams(rowParams);
-        newRow.setPadding(8, 8, 8, 8);
+        ));
+        row.setPadding(8, 8, 8, 8);
 
-        // 左側: ImageView (weight=1)
         ImageView imageView = new ImageView(this);
-        TableRow.LayoutParams imageParams = new TableRow.LayoutParams(
-                0,
-                TableRow.LayoutParams.MATCH_PARENT,
-                1f
-        );
-        imageView.setLayoutParams(imageParams);
+        TableRow.LayoutParams imgParams = new TableRow.LayoutParams(0,
+                TableRow.LayoutParams.MATCH_PARENT, 1f);
+        imageView.setLayoutParams(imgParams);
 
-        // Base64 → Bitmap (小さい maxSize で)
-        Bitmap smallBitmap = decodeBase64ToBitmap(item.base64Image, 300);
-        if (smallBitmap != null) {
-            imageView.setImageBitmap(smallBitmap);
+        Bitmap small = decodeBase64ToBitmap(item.base64Image, 300);
+        if (small != null) {
+            imageView.setImageBitmap(small);
         } else {
             imageView.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 右側: LinearLayout (縦並び, weight=2)
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
-        TableRow.LayoutParams textLayoutParams = new TableRow.LayoutParams(
-                0,
-                TableRow.LayoutParams.MATCH_PARENT,
-                2f
-        );
-        textLayout.setLayoutParams(textLayoutParams);
+        TableRow.LayoutParams txtParams = new TableRow.LayoutParams(0,
+                TableRow.LayoutParams.MATCH_PARENT, 2f);
+        textLayout.setLayoutParams(txtParams);
 
-        // (上) Spinner テキスト
-        TextView spinnerTextView = new TextView(this);
-        LinearLayout.LayoutParams spinnerTextViewParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-        );
-        spinnerTextView.setLayoutParams(spinnerTextViewParams);
-        spinnerTextView.setText(item.spinnerText);
+        TextView spinnerTxt = new TextView(this);
+        spinnerTxt.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        spinnerTxt.setText(item.spinnerText);
 
-        // (下) EditText テキスト
-        TextView editTextView = new TextView(this);
-        LinearLayout.LayoutParams editTextViewParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                2f
-        );
-        editTextView.setLayoutParams(editTextViewParams);
-        editTextView.setText(item.editText);
+        TextView editTxt = new TextView(this);
+        editTxt.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f));
+        editTxt.setText(item.editText);
 
-        textLayout.addView(spinnerTextView);
-        textLayout.addView(editTextView);
+        textLayout.addView(spinnerTxt);
+        textLayout.addView(editTxt);
 
-        newRow.addView(imageView);
-        newRow.addView(textLayout);
+        row.addView(imageView);
+        row.addView(textLayout);
 
-        // タップ時に拡大表示
-        newRow.setOnClickListener(v -> openExpansionActivity(position));
+        row.setOnClickListener(v -> {
+            Intent intent = new Intent(this, CExpansionActivity.class);
+            intent.putExtra("INDEX", position);
+            intent.putExtra("ACTIVITY_TITLE", "微分積分");
+            startActivity(intent);
+        });
 
-        container.addView(newRow);
-    }
-
-    /**
-     * 拡大表示画面へ遷移
-     */
-    private void openExpansionActivity(int position) {
-        Intent intent = new Intent(this, CExpansionActivity.class);
-        intent.putExtra("INDEX", position);
-        intent.putExtra("ACTIVITY_TITLE", "微分積分");
-        startActivity(intent);
+        dynamicContainer.addView(row);
     }
 
     // ================================
-    // SharedPreferences に保存/読み込み
+    // SharedPreferences
     // ================================
-
     private void saveItemListToPrefs(List<CalItem> list) {
         StringBuilder sb = new StringBuilder();
-        for (CalItem item : list) {
-            sb.append(item.base64Image)
-                    .append(FIELD_DELIMITER)
-                    .append(item.spinnerText)
-                    .append(FIELD_DELIMITER)
-                    .append(item.editText)
-                    .append(ITEM_DELIMITER);
+        for (CalItem c : list) {
+            sb.append(c.base64Image).append(FIELD_DELIMITER)
+                    .append(c.spinnerText).append(FIELD_DELIMITER)
+                    .append(c.editText).append(ITEM_DELIMITER);
         }
-        String serialized = sb.toString();
-
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        prefs.edit().putString(KEY_ITEM_LIST, serialized).apply();
+        prefs.edit().putString(KEY_ITEM_LIST, sb.toString()).apply();
     }
 
     private List<CalItem> loadItemListFromPrefs() {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         String serialized = prefs.getString(KEY_ITEM_LIST, "");
         List<CalItem> result = new ArrayList<>();
-        if (serialized.isEmpty()) {
-            return result;
-        }
+        if (serialized.isEmpty()) return result;
 
-        String[] itemChunks = serialized.split(ITEM_DELIMITER);
-        for (String chunk : itemChunks) {
-            if (chunk.trim().isEmpty()) {
-                continue;
-            }
+        String[] chunks = serialized.split(ITEM_DELIMITER);
+        for (String chunk : chunks) {
+            if (chunk.trim().isEmpty()) continue;
             String[] fields = chunk.split(FIELD_DELIMITER);
-            if (fields.length < 3) {
-                continue;
-            }
+            if (fields.length < 3) continue;
             result.add(new CalItem(fields[0], fields[1], fields[2]));
         }
         return result;
     }
 
     // ================================
-    // 画像のエンコード/デコード関連
+    // 画像関連
     // ================================
-
-    /**
-     * Uri から画像を読み込み、PNG(100%)で Base64 化
-     * (一時的に大きくリサイズして保存すれば拡大表示も高解像度)
-     */
     private String encodeImageToBase64(Uri uri) {
-        // ストレージ上の最大サイズ -> 一定程度大きめ (例: 2000px)
-        Bitmap bitmap = getScaledBitmapFromUri(uri, 2000);
-        if (bitmap == null) return null;
-
+        Bitmap bm = getScaledBitmapFromUri(uri, 2000);
+        if (bm == null) return null;
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-        // PNGはlosslessなので quality は無視されるが、100指定しておく
+        bm.compress(Bitmap.CompressFormat.PNG, 100, baos);
         byte[] bytes = baos.toByteArray();
         return Base64.encodeToString(bytes, Base64.DEFAULT);
     }
 
-    /**
-     * Base64文字列を Bitmap にデコードし、更に maxSize に合わせてリサイズ (アスペクト比維持)
-     */
     private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
         try {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            // デコード
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            Bitmap rawBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
-            if (rawBitmap == null) {
-                return null;
-            }
-            // リサイズ
-            int width = rawBitmap.getWidth();
-            int height = rawBitmap.getHeight();
-            if (width > maxSize || height > maxSize) {
-                float ratio = (float) width / (float) height;
-                if (ratio > 1f) {
-                    width = maxSize;
-                    height = (int)(maxSize / ratio);
+            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (raw == null) return null;
+            int w = raw.getWidth(), h = raw.getHeight();
+            if (w > maxSize || h > maxSize) {
+                float r = (float) w / (float) h;
+                if (r > 1f) {
+                    w = maxSize;
+                    h = (int)(maxSize / r);
                 } else {
-                    height = maxSize;
-                    width = (int)(maxSize * ratio);
+                    h = maxSize;
+                    w = (int)(maxSize * r);
                 }
-                return Bitmap.createScaledBitmap(rawBitmap, width, height, true);
-            } else {
-                // そのまま
-                return rawBitmap;
+                return Bitmap.createScaledBitmap(raw, w, h, true);
             }
+            return raw;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    /**
-     * Uri からアスペクト比を保ちながら最大 maxSize に収まる Bitmap を生成
-     */
     private Bitmap getScaledBitmapFromUri(Uri uri, int maxSize) {
         try {
-            // 1) 画像の実寸法を取得
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            InputStream inputStream = getContentResolver().openInputStream(uri);
-            BitmapFactory.decodeStream(inputStream, null, options);
-            inputStream.close();
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            InputStream in = getContentResolver().openInputStream(uri);
+            BitmapFactory.decodeStream(in, null, opts);
+            in.close();
 
-            int originalWidth = options.outWidth;
-            int originalHeight = options.outHeight;
-
-            // 2) inSampleSize を決定
+            int w = opts.outWidth;
+            int h = opts.outHeight;
             int inSampleSize = 1;
-            while ((originalWidth / inSampleSize) > maxSize || (originalHeight / inSampleSize) > maxSize) {
+            while ((w / inSampleSize) > maxSize || (h / inSampleSize) > maxSize) {
                 inSampleSize *= 2;
             }
-            options.inSampleSize = inSampleSize;
-            options.inJustDecodeBounds = false;
+            opts.inSampleSize = inSampleSize;
+            opts.inJustDecodeBounds = false;
 
-            // 3) 実際にビットマップをデコード
-            inputStream = getContentResolver().openInputStream(uri);
-            Bitmap sampledBitmap = BitmapFactory.decodeStream(inputStream, null, options);
-            inputStream.close();
-            if (sampledBitmap == null) {
-                return null;
-            }
+            in = getContentResolver().openInputStream(uri);
+            Bitmap sample = BitmapFactory.decodeStream(in, null, opts);
+            in.close();
+            if (sample == null) return null;
 
-            // 4) 長辺が maxSize を超える場合、さらにリサイズ
-            int scaledWidth = sampledBitmap.getWidth();
-            int scaledHeight = sampledBitmap.getHeight();
-            float ratio = (float) scaledWidth / (float) scaledHeight;
-
-            if (scaledWidth > maxSize || scaledHeight > maxSize) {
-                if (ratio > 1f) {
-                    // 横長
-                    scaledWidth = maxSize;
-                    scaledHeight = (int) (maxSize / ratio);
+            w = sample.getWidth();
+            h = sample.getHeight();
+            float r = (float) w / (float) h;
+            if (w > maxSize || h > maxSize) {
+                if (r > 1f) {
+                    w = maxSize;
+                    h = (int)(maxSize / r);
                 } else {
-                    // 縦長
-                    scaledHeight = maxSize;
-                    scaledWidth = (int) (maxSize * ratio);
+                    h = maxSize;
+                    w = (int)(maxSize * r);
                 }
-                return Bitmap.createScaledBitmap(sampledBitmap, scaledWidth, scaledHeight, true);
-            } else {
-                return sampledBitmap;
+                return Bitmap.createScaledBitmap(sample, w, h, true);
             }
+            return sample;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-    }
-
-    // ================================
-    // SearchView 検索機能
-    // ================================
-
-    private void setupSearchView() {
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                filterListBySpinnerText(query);
-                return true;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                // リアルタイムに絞り込みたいならここで呼ぶ
-                // filterListBySpinnerText(newText);
-                return false;
-            }
-        });
-
-        // SearchView の × ボタン押下
-        searchView.setOnCloseListener(() -> {
-            reloadDynamicViews(itemList);
-            return false;
-        });
-    }
-
-    private void filterListBySpinnerText(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            reloadDynamicViews(itemList);
-            return;
-        }
-        List<CalItem> filtered = new ArrayList<>();
-        for (CalItem item : itemList) {
-            if (item.spinnerText.equals(query.trim())) {
-                filtered.add(item);
-            }
-        }
-        reloadDynamicViews(filtered);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 他の画面で編集・削除されたかもしれないので再読み込み
+        // 編集/削除後の再読み込み
         itemList = loadItemListFromPrefs();
         reloadDynamicViews(itemList);
     }

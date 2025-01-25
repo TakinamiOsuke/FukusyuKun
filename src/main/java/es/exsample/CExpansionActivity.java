@@ -15,11 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 拡大表示画面 (微分積分版)。
- * - レイアウト：c_expansion.xml
- * - 画像を高解像度で表示
- * - 編集: CEditActivity
- * - 削除: AlertDialog確認
+ * 拡大表示画面 (微分積分)。
+ * レイアウト: c_expansion.xml
  */
 public class CExpansionActivity extends AppCompatActivity {
 
@@ -32,12 +29,8 @@ public class CExpansionActivity extends AppCompatActivity {
     private String activityTitle = "拡大表示";
 
     private ImageView imgExpanded;
-    private TextView tvSpinnerTitle;
-    private TextView tvComment;
-    private TextView tvExpansionTitle;
-    private Button btnClose;
-    private Button btnEdit;
-    private Button btnDelete;
+    private TextView tvSpinnerTitle, tvComment, tvExpansionTitle;
+    private Button btnClose, btnEdit, btnDelete;
 
     private List<CalculusActivity.CalItem> itemList = new ArrayList<>();
     private CalculusActivity.CalItem currentItem;
@@ -56,7 +49,6 @@ public class CExpansionActivity extends AppCompatActivity {
         btnEdit = findViewById(R.id.btn_edit);
         btnDelete = findViewById(R.id.btn_delete);
 
-        // インテントから
         itemIndex = getIntent().getIntExtra("INDEX", -1);
         activityTitle = getIntent().getStringExtra("ACTIVITY_TITLE");
         if (activityTitle == null) {
@@ -64,35 +56,29 @@ public class CExpansionActivity extends AppCompatActivity {
         }
         tvExpansionTitle.setText(activityTitle);
 
-        // itemList読み込み
         itemList = loadItemListFromPrefs();
         if (itemIndex >= 0 && itemIndex < itemList.size()) {
             currentItem = itemList.get(itemIndex);
         }
 
-        // 画像を大きいサイズで復元 (例: 2000px)
         if (currentItem != null) {
-            Bitmap bigBitmap = decodeBase64ToBitmap(currentItem.base64Image, 2000);
-            if (bigBitmap != null) {
-                imgExpanded.setImageBitmap(bigBitmap);
+            Bitmap bigBmp = decodeBase64ToBitmap(currentItem.base64Image, 2000);
+            if (bigBmp != null) {
+                imgExpanded.setImageBitmap(bigBmp);
             }
             tvSpinnerTitle.setText(currentItem.spinnerText);
             tvComment.setText(currentItem.editText);
         }
 
-        // ボタンリスナー
         btnClose.setOnClickListener(v -> finish());
-
         btnEdit.setOnClickListener(v -> {
             if (currentItem == null) return;
-            // 編集画面へ
             Intent intent = new Intent(this, CEditActivity.class);
             intent.putExtra("INDEX", itemIndex);
             intent.putExtra("ACTIVITY_TITLE", activityTitle);
             startActivity(intent);
             finish();
         });
-
         btnDelete.setOnClickListener(v -> {
             if (currentItem == null) return;
             showDeleteConfirmationDialog();
@@ -103,9 +89,7 @@ public class CExpansionActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("削除の確認")
                 .setMessage("本当に削除しますか？")
-                .setPositiveButton("はい", (dialog, which) -> {
-                    deleteCurrentItem();
-                })
+                .setPositiveButton("はい", (dialog, which) -> deleteCurrentItem())
                 .setNegativeButton("いいえ", (dialog, which) -> dialog.dismiss())
                 .show();
     }
@@ -124,39 +108,31 @@ public class CExpansionActivity extends AppCompatActivity {
     // ========================
     private List<CalculusActivity.CalItem> loadItemListFromPrefs() {
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        String serialized = prefs.getString(KEY_ITEM_LIST, "");
-        List<CalculusActivity.CalItem> result = new ArrayList<>();
-        if (serialized.isEmpty()) {
-            return result;
+        String s = prefs.getString(KEY_ITEM_LIST, "");
+        List<CalculusActivity.CalItem> res = new ArrayList<>();
+        if (s.isEmpty()) return res;
+
+        String[] chunks = s.split(ITEM_DELIMITER);
+        for (String c : chunks) {
+            if (c.trim().isEmpty()) continue;
+            String[] f = c.split(FIELD_DELIMITER);
+            if (f.length < 3) continue;
+            res.add(new CalculusActivity.CalItem(f[0], f[1], f[2]));
         }
-        String[] itemChunks = serialized.split(ITEM_DELIMITER);
-        for (String chunk : itemChunks) {
-            if (chunk.trim().isEmpty()) {
-                continue;
-            }
-            String[] fields = chunk.split(FIELD_DELIMITER);
-            if (fields.length < 3) {
-                continue;
-            }
-            result.add(new CalculusActivity.CalItem(fields[0], fields[1], fields[2]));
-        }
-        return result;
+        return res;
     }
 
     private void saveItemListToPrefs(List<CalculusActivity.CalItem> list) {
         StringBuilder sb = new StringBuilder();
-        for (CalculusActivity.CalItem item : list) {
-            sb.append(item.base64Image)
-                    .append(FIELD_DELIMITER)
-                    .append(item.spinnerText)
-                    .append(FIELD_DELIMITER)
-                    .append(item.editText)
-                    .append(ITEM_DELIMITER);
+        for (CalculusActivity.CalItem it : list) {
+            sb.append(it.base64Image).append(FIELD_DELIMITER)
+                    .append(it.spinnerText).append(FIELD_DELIMITER)
+                    .append(it.editText).append(ITEM_DELIMITER);
         }
-        String serialized = sb.toString();
-
-        SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        prefs.edit().putString(KEY_ITEM_LIST, serialized).apply();
+        getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(KEY_ITEM_LIST, sb.toString())
+                .apply();
     }
 
     // ========================
@@ -165,28 +141,25 @@ public class CExpansionActivity extends AppCompatActivity {
     private Bitmap decodeBase64ToBitmap(String base64, int maxSize) {
         try {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            Bitmap rawBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (rawBitmap == null) return null;
+            Bitmap raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (raw == null) return null;
 
-            int width = rawBitmap.getWidth();
-            int height = rawBitmap.getHeight();
-            if (width > maxSize || height > maxSize) {
-                float ratio = (float) width / (float) height;
-                if (ratio > 1f) {
-                    width = maxSize;
-                    height = (int)(maxSize / ratio);
+            int w = raw.getWidth(), h = raw.getHeight();
+            if (w > maxSize || h > maxSize) {
+                float r = (float) w / (float) h;
+                if (r > 1f) {
+                    w = maxSize;
+                    h = (int)(maxSize / r);
                 } else {
-                    height = maxSize;
-                    width = (int)(maxSize * ratio);
+                    h = maxSize;
+                    w = (int)(maxSize * r);
                 }
-                return Bitmap.createScaledBitmap(rawBitmap, width, height, true);
-            } else {
-                return rawBitmap;
+                return Bitmap.createScaledBitmap(raw, w, h, true);
             }
+            return raw;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 }
-
