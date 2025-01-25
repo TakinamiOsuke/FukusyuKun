@@ -42,7 +42,7 @@
         android:layout_margin="4dp"
         android:spinnerMode="dialog" />
 
-    <!-- 画像選択 + タイトルSpinner + EditText の TableRow -->
+    <!-- TableRow (ImageButton + Spinner + EditText) -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -54,12 +54,14 @@
             android:layout_height="match_parent"
             android:layout_weight="1">
 
+            <!-- ImageButton: src は設定しない（重複アイコン回避） -->
             <ImageButton
                 android:id="@+id/image_button"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:backgroundTint="#EEEEEE"
-                android:scaleType="centerCrop" />
+                android:scaleType="centerCrop"
+                android:src="@null" />
 
             <TextView
                 android:id="@+id/tv_image_button_hint"
@@ -98,7 +100,7 @@
 
     </TableRow>
 
-    <!-- 追加ボタン -->
+    <!-- ボタンのTableRow -->
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -116,7 +118,7 @@
             android:textStyle="bold" />
     </TableRow>
 
-    <!-- リスト表示 (スクロール) -->
+    <!-- スクロール表示領域 -->
     <ScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
@@ -128,7 +130,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-            <!-- 動的追加エリア -->
+            <!-- 動的に追加するエリア -->
         </LinearLayout>
 
     </ScrollView>

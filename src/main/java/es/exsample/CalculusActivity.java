@@ -18,6 +18,13 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 微分積分画面
+ * - ImageButton 初期状態は src=null
+ * - 追加後に clearInputFields() で setImageDrawable(null) & hint 再表示
+ * - 画質は PNG(100%)
+ * - 編集画面は変更不要
+ */
 public class CalculusActivity extends AppCompatActivity {
 
     private static final int REQUEST_GALLERY = 1;
@@ -41,6 +48,7 @@ public class CalculusActivity extends AppCompatActivity {
     private Spinner searchSpinner;
     private LinearLayout dynamicContainer;
 
+    // 選択中の画像
     private Bitmap selectedBitmap = null;
     private boolean isSpinnerSelected = false;
     private String selectedSpinnerItem;
@@ -63,17 +71,15 @@ public class CalculusActivity extends AppCompatActivity {
         Button btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> finish());
 
-        // ImageButton + hint
         imageButton = findViewById(R.id.image_button);
         tvImageHint = findViewById(R.id.tv_image_button_hint);
-
         spinner = findViewById(R.id.spinner);
         editTextField = findViewById(R.id.edit_text);
         btnAdd = findViewById(R.id.btn_add);
         searchSpinner = findViewById(R.id.search_spinner);
         dynamicContainer = findViewById(R.id.dynamic_table_container);
 
-        // Spinner
+        // データ入力用 Spinner
         String[] fromRes = getResources().getStringArray(R.array.calculus_menu);
         calcTitles = new ArrayList<>();
         calcTitles.add("タイトル選択");
@@ -100,7 +106,6 @@ public class CalculusActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        // ImageButton -> ギャラリー
         imageButton.setOnClickListener(v -> openGallery());
 
         btnAdd.setOnClickListener(v -> {
@@ -120,7 +125,7 @@ public class CalculusActivity extends AppCompatActivity {
 
             String base64 = encodeBitmapToBase64(selectedBitmap);
             if (base64 == null) {
-                Toast.makeText(this, "画像エンコードに失敗しました", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "画像のエンコードに失敗しました", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -144,13 +149,14 @@ public class CalculusActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int req, int res, @Nullable Intent data) {
-        super.onActivityResult(req, res, data);
-        if (req == REQUEST_GALLERY && res == RESULT_OK && data != null && data.getData() != null) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_GALLERY && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
             Bitmap bmp = decodeUriToBitmap(uri, 600);
             if (bmp != null) {
                 selectedBitmap = bmp;
+                // ImageButton に表示
                 imageButton.setImageBitmap(bmp);
                 tvImageHint.setVisibility(View.GONE);
             } else {
@@ -232,18 +238,17 @@ public class CalculusActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         tvSpin.setText(item.spinnerText);
 
-        TextView tvEdt = new TextView(this);
-        tvEdt.setLayoutParams(new LinearLayout.LayoutParams(
+        TextView tvEdit = new TextView(this);
+        tvEdit.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f));
-        tvEdt.setText(item.editText);
+        tvEdit.setText(item.editText);
 
         textLayout.addView(tvSpin);
-        textLayout.addView(tvEdt);
+        textLayout.addView(tvEdit);
 
         row.addView(iv);
         row.addView(textLayout);
 
-        // 拡大表示
         row.setOnClickListener(v -> {
             Intent intent = new Intent(this, CExpansionActivity.class);
             intent.putExtra("INDEX", position);
@@ -254,9 +259,12 @@ public class CalculusActivity extends AppCompatActivity {
         dynamicContainer.addView(row);
     }
 
+    /**
+     * 追加後リセット -> ImageButton に何も設定せず、hint復活
+     */
     private void clearInputFields() {
         selectedBitmap = null;
-        imageButton.setImageResource(android.R.drawable.ic_menu_gallery);
+        imageButton.setImageDrawable(null);
         tvImageHint.setVisibility(View.VISIBLE);
 
         spinner.setSelection(0);
@@ -280,21 +288,24 @@ public class CalculusActivity extends AppCompatActivity {
     }
 
     private List<CalItem> loadItemListFromPrefs() {
-        String s = getSharedPreferences(PREF_NAME, MODE_PRIVATE).getString(KEY_ITEM_LIST, "");
+        String stored = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                .getString(KEY_ITEM_LIST, "");
         List<CalItem> result = new ArrayList<>();
-        if (s.isEmpty()) return result;
+        if (stored.isEmpty()) return result;
 
-        String[] items = s.split(ITEM_DELIMITER);
-        for (String it : items) {
-            if (it.trim().isEmpty()) continue;
-            String[] f = it.split(FIELD_DELIMITER);
+        String[] items = stored.split(ITEM_DELIMITER);
+        for (String chunk : items) {
+            if (chunk.trim().isEmpty()) continue;
+            String[] f = chunk.split(FIELD_DELIMITER);
             if (f.length < 3) continue;
             result.add(new CalItem(f[0], f[1], f[2]));
         }
         return result;
     }
 
+    //==================================
     // 画像処理
+    //==================================
     private Bitmap decodeUriToBitmap(Uri uri, int maxSize) {
         try {
             BitmapFactory.Options opts = new BitmapFactory.Options();
@@ -325,16 +336,17 @@ public class CalculusActivity extends AppCompatActivity {
     }
 
     private Bitmap scaleBitmap(Bitmap src, int maxSize) {
+        if (src == null) return null;
         int w = src.getWidth();
         int h = src.getHeight();
         if (w <= maxSize && h <= maxSize) return src;
-        float r = (float) w / (float) h;
-        if (r > 1f) {
+        float ratio = (float) w / (float) h;
+        if (ratio > 1f) {
             w = maxSize;
-            h = (int)(maxSize / r);
+            h = (int)(maxSize / ratio);
         } else {
             h = maxSize;
-            w = (int)(maxSize * r);
+            w = (int)(maxSize * ratio);
         }
         return Bitmap.createScaledBitmap(src, w, h, true);
     }
@@ -343,7 +355,8 @@ public class CalculusActivity extends AppCompatActivity {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             bmp.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+            byte[] bytes = baos.toByteArray();
+            return Base64.encodeToString(bytes, Base64.DEFAULT);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -365,6 +378,7 @@ public class CalculusActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 編集画面から戻ったなどの場合に再描画
         itemList = loadItemListFromPrefs();
         reloadDynamicViews(itemList);
     }

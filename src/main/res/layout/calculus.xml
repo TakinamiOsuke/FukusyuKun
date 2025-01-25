@@ -48,17 +48,20 @@
         android:layout_height="wrap_content"
         android:padding="8dp">
 
+        <!-- FrameLayout に ImageButton & 「画像選択」テキストを重ねる -->
         <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1">
 
+            <!-- ImageButton: src を null にして重複アイコンを回避 -->
             <ImageButton
                 android:id="@+id/image_button"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:backgroundTint="#EEEEEE"
-                android:scaleType="centerCrop" />
+                android:scaleType="centerCrop"
+                android:src="@null" />
 
             <TextView
                 android:id="@+id/tv_image_button_hint"
